@@ -1,0 +1,198 @@
+---
+title: 'Projeto de disciplina: Análise exploratória de dados'
+encoding: "UTF-8"
+output: pdf_document
+---
+
+**Aluno:** João Marcos
+
+**Professor:** Otto Tavares
+
+
+# **1. Base de dados escolhida**
+
+Eu escolhi a base de dados: `apple_quality.csv`. Essa base contém informações detalhadas sobre diversos aspectos da qualidade de maçãs. A base tem um número adequado de variáveis de interesse também o que ajuda na análise estatística da base. Os principais resultados que procuro obter com a análise é entender quais são as variáveis que mais impactam na qualidade das maçãs, descrever quais são as principais características das maçãs de alta qualidade e verificar quais são as variáveis mais correlacionadas.
+
+**[Link da base no Kaggle:](https://www.kaggle.com/datasets/nelgiriyewithana/apple-quality?resource=download)**
+
+
+## **Carregando as bibliotecas que vou utilizar**
+
+```
+library(tidyverse)
+library(ggplot2)
+library(corrplot)
+library(ggcorrplot)
+library(ggpubr)
+library(dplyr)
+
+```
+
+## **Carregando a base de dados**
+
+```{r Base, echo=TRUE, message=FALSE}
+
+setwd('F:\\POS_GRADUACAO\\POS DATA SCIENCE\\Análise exploratória de dados\\projeto_de_disciplina')
+df <- read.csv("data/apple_quality.csv")
+
+head(df)
+```
+A base possui uma variável qualitativa que é a Quality.
+
+Já as variáveis quantitativas, temos: Size, Weight, Sweetness, Crunchiness, Juiceness, Ripeness e Acidity ambas contínuas.
+
+## **Funções**
+
+```{r função limpar_dataframe, echo=TRUE, message=FALSE}
+limpar_dataframe <- function(dataframe){
+  
+  #removendo Na
+  df <- df[complete.cases(df), ]
+  
+  #limpando última linha
+  df <- df[-nrow(df), ]
+  
+  #trocando Acidity para numerico
+  df$Acidity <- as.numeric(df$Acidity)
+  
+  #setando rowname como A_id
+  rownames(df) <- df$A_id
+  df <- df[,-1]
+  
+  return(df)
+}
+
+```
+
+```{r função plot-qq, echo=TRUE, message=FALSE}
+# função para plotar o gráfico Q-Q
+plot_qq <- function(df, col) {
+  qqnorm(df[[col]], main = paste("Gráfico Q-Q para", col))
+  qqline(df[[col]], col = "red")
+}
+
+```
+## **Limpando o DataFrame**
+
+Utilizando a função `limpar_dataframe` vou realizar a limpeza dos erros do `df`.
+```{r Utilizando função limpar_dataframe, echo=TRUE, message=FALSE}
+#salvando df original para calcular completude
+df3 <- df
+df <- limpar_dataframe(df)
+
+```
+# **2. Utilizando o pacote summarytools (função descr), descreva estatisticamente a sua base de dados.**
+
+A base de dados já se encontra normalizada quando baixada do kaggle, então irei analisar através da função `descr` a base para verificar as estatísticas dela como  a centralidade, dipersão, assimetria e estatísticas de ordem.
+
+```{r EDA, echo=TRUE, message=FALSE}
+library(summarytools)
+#retirando coluna categorica para análise
+df2 <- df[, -8]
+descr(df2)
+
+```
+
+# **3. Crie um gráfico com a matriz de espalhamento (scatter matrix plot) para sua base de dados. Através de investigação visual, quais são as variáveis mais correlacionadas. Apresente o gráfico e justifique.**
+
+Utilizando a library GGally vou criar uma scatter matrix plot para poder verificar as correlações entre as caracteristiscas presentes na :
+
+```{r Scatter_matrix, echo=TRUE, message=FALSE}
+library(GGally)
+scatter_matrix <- ggpairs(df2)
+scatter_matrix
+```
+
+
+Com base na matriz de correlação podemos perceber que as variaveis mais correlacionadas são: **Crunchiness X Size**, **Size X Acidity** e **Juiceness X Acidity**. 
+
+
+
+# **4. Sobre a normalidade das variáveis:**
+
+## **a) Descreva o que é uma distribuição normal;**
+
+Uma distribuição normal é uma distribuição simétrica em forma de sino, onde a média, mediana e moda são iguais.
+
+## **b) Crie um histograma para cada variável da sua base de dados. Justifique a escolha do número de bins para seu trabalho. (usando o pacote ggplot);**
+```{r Histogramas, echo=TRUE, message=FALSE}
+
+histogramas <- list()
+
+for (col in names(df2)) {
+  
+  histograma <- ggplot(df2, aes_string(x = col)) +
+    geom_histogram(bins= 12, fill = "#115f9a", color = "black") +
+    labs(title = paste("Histograma de", col)) +
+    theme_minimal()
+  
+  histogramas[[col]] <- histograma
+}
+
+# Visualizar os histogramas
+print(histogramas)
+
+
+
+```
+Para escolher o número de bins eu utilizei a regra de Sturge pois ao analisar a variável percebi que a média e mediana estavam bem próximas e os dados não estavam com dispersão elevada. Ao aplicar a regra obtive que o número de bins sugeridos é 12 e com isso apliquei dentro da criação do histograma e bateu com a expectativa que tinha em relação a variável de que ela se aproximava de uma normal.
+
+## **c) Crie um gráfico Q-Q para cada variável de sua base de dados. (use as funções presentes no pacote ggpubr);**
+
+```{r Q-Q, echo=TRUE, message=FALSE}
+
+for (col in names(df2)) {
+  plot_qq(df2, col)
+}
+
+
+```
+
+## **d) Execute um teste de normalidade Shapiro-Wilk;**
+
+```{r Shapiro-Wilk, echo=TRUE, message=FALSE}
+sapply(df2, shapiro.test)
+
+
+```
+## **e) Baseado nos itens anteriores, é possível afirmar que algumas das variáveis se aproximam de uma distribuição normal? Justifique.**
+
+Como observado nos gráficos anteriores pode sim ser afirmado que existe algumas variaveis que se aproximam de uma normal sendo elas: Size, Juiceness e Ripeness. Seus seus gráficos q-q estão próximos a linha diagonal o que indica essa normalidade e os p.value também estão tendendo a normalidade. 
+
+
+# **5. Qualidade de dados tem sido um dos temas mais abordados nos projetos de estruturação em data analytics, sendo um dos principais indicadores do nível de maturidade das organizações. Um dos problemas mais comuns de qualidade é relacionado à completude de dados. Em suas palavras, como é definido completude? Qual o impacto em uma análise exploratória de dados?**
+
+A completude de dados pode ser definida como a ausência de valores faltantes na base de dados. Quando os dados estão incompletos pode afetar significativamente a análise exploratória dos dados, gerando análises enviesadas e perda de insights, por exemplo, devido a falta desses dados.
+
+
+
+# **6. Qual a completude para cada uma das variáveis do seu banco de dados?**
+
+
+```{r Completude, echo=TRUE, message=FALSE}
+dados <- df3
+
+# calculando a completude de cada variável
+completude <- colMeans(!is.na(dados)) * 100
+
+print(completude)
+
+
+```
+
+# **7. Realize uma operação de imputação de dados usando o pacote MICE.**
+
+```{r MICE, echo=TRUE, message=FALSE}
+library(mice)
+mice(df2, m = 5, method = 'pmm')
+
+
+```
+
+# **App do Shiny**
+
+O app do Shiny pode ser acessados atráves desse link: **[App Shiny João Marcos](https://joaopacheco.shinyapps.io/joaompachecoshiny/)**
+
+# **Repositório Github do trabalho**
+
+O código do Shiny e do rmarkdown podem ser acessados atráves desse link: **[Repositório GitHub](https://github.com/joaompacheco/pd_analiseexploratoriadados_joaom)**
